@@ -1,0 +1,17 @@
+[package]
+name = "wfa"
+version = "1.0.0"
+edition = "2021"
+authors = ["Andreas Sagen"]
+description = "High-performance Gap-Affine Wavefront Alignment & BiWFA engine in Rust"
+license = "MIT"
+
+[lib]
+name = "wfa"
+path = "src/lib.rs"
+
+[[bin]]
+name = "wfa"
+path = "src/main.rs"
+
+[dependencies]
