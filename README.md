@@ -1,6 +1,5 @@
-> [!IMPORTANT]
-> **Archival Notice**
-> This repository is archived and is no longer actively maintained.
+> [!NOTE]
+> **Archive Notice**: This project is an educational and reference implementation of the Wavefront Alignment (WFA) algorithm and BiWFA in Rust. It is finished and archived; no active maintenance or feature development is planned.
 
 # wfa: Gap-Affine Wavefront Alignment & BiWFA Engine
 
