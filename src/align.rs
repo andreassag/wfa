@@ -84,12 +84,12 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
             hi = hi.max(m_wf[s - oe].hi + 1);
         }
         if s >= e && !i_wf[s - e].is_null() {
-            lo = lo.min(i_wf[s - e].lo + 1);
-            hi = hi.max(i_wf[s - e].hi + 1);
+            lo = lo.min(i_wf[s - e].lo - 1);
+            hi = hi.max(i_wf[s - e].hi - 1);
         }
         if s >= e && !d_wf[s - e].is_null() {
-            lo = lo.min(d_wf[s - e].lo - 1);
-            hi = hi.max(d_wf[s - e].hi - 1);
+            lo = lo.min(d_wf[s - e].lo + 1);
+            hi = hi.max(d_wf[s - e].hi + 1);
         }
         if s >= x && !m_wf[s - x].is_null() {
             lo = lo.min(m_wf[s - x].lo);
@@ -147,9 +147,9 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
 
             if m_val >= 0 {
                 let q_pos = m_val as usize;
-                let t_pos = ((m_val as i64) + (k as i64)) as usize;
-                if q_pos <= q_len && t_pos <= t_len {
-                    let (ext_q, _) = lcp_extend(q.as_slice(), t.as_slice(), q_pos, t_pos);
+                let t_pos_i64 = (m_val as i64) + (k as i64);
+                if t_pos_i64 >= 0 && q_pos <= q_len && (t_pos_i64 as usize) <= t_len {
+                    let (ext_q, _) = lcp_extend(q.as_slice(), t.as_slice(), q_pos, t_pos_i64 as usize);
                     arena.set(&cur_m, k, ext_q as i32);
 
                     if k == target_k && ext_q >= q_len {
@@ -179,7 +179,7 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
     let mut curr_k = target_k;
     let mut curr_state = 'M'; // 'M', 'I', 'D'
 
-    while curr_s > 0 || curr_k != 0 || arena.get(&m_wf[0], 0) as usize > 0 {
+    while curr_s > 0 || curr_k != 0 {
         if curr_state == 'M' {
             let off = arena.get(&m_wf[curr_s], curr_k);
             if curr_s == 0 {
@@ -211,7 +211,7 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
                 prev_source = 'D';
             }
 
-            let matches = (off - base_off) as u32;
+            let matches = (off - base_off).max(0) as u32;
             if matches > 0 {
                 cigar.push(CigarOp::Match(matches));
             }
@@ -219,7 +219,7 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
             match prev_source {
                 'X' => {
                     cigar.push(CigarOp::Mismatch(1));
-                    curr_s -= x;
+                    curr_s = curr_s.saturating_sub(x);
                 }
                 'I' => {
                     curr_state = 'I';
@@ -242,11 +242,11 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
             }
 
             if from_m {
-                curr_s -= oe;
+                curr_s = curr_s.saturating_sub(oe);
                 curr_k += 1;
                 curr_state = 'M';
             } else {
-                curr_s -= e;
+                curr_s = curr_s.saturating_sub(e);
                 curr_k += 1;
             }
         } else if curr_state == 'D' {
@@ -261,13 +261,20 @@ pub fn wfa_align(q: &PaddedSeq, t: &PaddedSeq, params: &WfaParams) -> AlignmentR
             }
 
             if from_m {
-                curr_s -= oe;
+                curr_s = curr_s.saturating_sub(oe);
                 curr_k -= 1;
                 curr_state = 'M';
             } else {
-                curr_s -= e;
+                curr_s = curr_s.saturating_sub(e);
                 curr_k -= 1;
             }
+        }
+    }
+
+    if curr_s == 0 && curr_k == 0 && !m_wf.is_empty() {
+        let init_m = arena.get(&m_wf[0], 0);
+        if init_m > 0 && cigar.ops.is_empty() {
+            cigar.push(CigarOp::Match(init_m as u32));
         }
     }
 
